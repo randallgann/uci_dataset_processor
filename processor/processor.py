@@ -11,7 +11,7 @@ class my_processor():
         # Validate and process argument options
         self.parse_args(mode, url)
         # Initialize database connection
-        self.request_html(self.url)
+        self.request_html()
     
     def parse_args(self, mode, url):
         if mode == 'unittest':
@@ -38,10 +38,13 @@ class my_processor():
             print('** App Exit Status: FAIL \n')
             exit(self.EXIT_FAIL)
 
-    def request_html(self, url):
-        r = requests.get(url)
-        self.html = r.content
-        return self.html # this is returning bytes object
+    def request_html(self):
+        r = requests.get(self.url)
+        self.html = r.content.decode('utf-8') # this converts bytes into sring
+        return self.html
+
+    def parse_html(self):
+        pass
 
     def wget_url(self, url):
         a = 'wget'

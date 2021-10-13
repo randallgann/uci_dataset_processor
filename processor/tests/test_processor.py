@@ -17,7 +17,10 @@ class TestProcessor(unittest.TestCase):
         self.app = processor.my_processor(mode, url)
 
     def test_request_html(self):
-        self.assertEqual(self.app.request_html, 'html', 'WRONG')
+        self.assertEqual(self.app.request_html()[:14], '<!DOCTYPE HTML')
+
+    def test_html_parse(self):
+        self.assertIsInstance(self.app.parse_html(), dict)
 
 
 #class TestWget(unittest.TestCase):

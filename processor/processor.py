@@ -2,6 +2,7 @@ import sys, os.path, re
 import argparse
 import subprocess
 import requests
+from bs4 import BeautifulSoup
 
 class my_processor():
 
@@ -12,6 +13,7 @@ class my_processor():
         self.parse_args(mode, url)
         # Initialize database connection
         self.request_html()
+        self.parse_html()
     
     def parse_args(self, mode, url):
         if mode == 'unittest':
@@ -41,10 +43,16 @@ class my_processor():
     def request_html(self):
         r = requests.get(self.url)
         self.html = r.content.decode('utf-8') # this converts bytes into sring
-        return self.html
+        return self.html # return statement needed for unittest
 
     def parse_html(self):
-        pass
+        # parse html return a [] of links
+        soup = BeautifulSoup(self.html, 'html.parser')
+        urls = []
+        for link in soup.find_all('a'):
+            if '.' in link.get('href'):
+                urls.append(self.url + link.get('href'))
+        return urls
 
     def wget_url(self, url):
         a = 'wget'

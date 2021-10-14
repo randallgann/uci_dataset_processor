@@ -20,7 +20,14 @@ class TestProcessor(unittest.TestCase):
         self.assertEqual(self.app.request_html()[:14], '<!DOCTYPE HTML')
 
     def test_html_parse(self):
-        self.assertIsInstance(self.app.parse_html(), dict)
+        self.assertIsInstance(self.app.parse_html()[0], str)
+
+    def test_wget_files(self):
+        pass
+
+    #def tearDown(self) -> None:
+    #    i = super().tearDown()
+    #   return super().tearDown()
 
 
 #class TestWget(unittest.TestCase):

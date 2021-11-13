@@ -11,19 +11,24 @@ import processor
 
 class TestProcessor(unittest.TestCase):
     
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
         mode = 'unittest'
         url = 'https://archive.ics.uci.edu/ml/machine-learning-databases/00554/'
         self.app = processor.my_processor(mode, url)
 
-    def test_request_html(self):
-        self.assertEqual(self.app.request_html()[:14], '<!DOCTYPE HTML')
-
-    def test_html_parse(self):
+    def test_request_and_parse_html(self):
+        response = self.app.request_html()
+        self.assertEqual(response[:14], '<!DOCTYPE HTML')
         self.assertIsInstance(self.app.parse_html()[0], str)
+        
+    def test_wget_files_and_handler(self):
+        self.assertEqual(self.app.wget_url(), 'WGET operation successful')
+        self.assertIsInstance(self.app.files_handler(), list)
 
-    def test_wget_files(self):
-        pass
+    # Next i need to build the papermill execute string
+    # def test_file_handler(self):
+        
 
     #def tearDown(self) -> None:
     #    i = super().tearDown()

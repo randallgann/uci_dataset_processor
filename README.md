@@ -11,7 +11,7 @@ This script requires uci.dataset url, downloads all required data files, process
 
 ## Installing / Running
 
-Run the script by passing the url command line argument in the form 
+Run the script by passing the url and directory path command line arguments in the form 
 
 'https://archive.ics.uci.edu/ml/machine-learning-databases/00605/'
 

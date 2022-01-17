@@ -6,13 +6,14 @@
 
 ## Features / Description
 
-This script requires uci.dataset url, downloads all required data files, processes those data files into a jupyter notebook
-
+This scripts takes as input url(s) from urls.txt, goes out and fetches the data files of the url(s) and then uses those data files as input to launch a jupyter notebook for data analysis.
 
 ## Installing / Running
 
-Run the script by passing the url and directory path command line arguments in the form 
+1. Clone the repository
 
-'https://archive.ics.uci.edu/ml/machine-learning-databases/00605/'
+   git clone git@github.com:randallgann/uci_dataset_processor.git
 
-```python3 processor.py --url```
+2. Populate urls.txt with one or more UCI Dataset URLs in the specific format and run.
+
+   python3 processory.py

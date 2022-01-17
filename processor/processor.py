@@ -1,92 +1,145 @@
-import sys, os, re
 import argparse
+import os
+import pathlib
+import re
 import subprocess
+import sys
+import zipfile
+
+import papermill as pm
 import requests
 from bs4 import BeautifulSoup
-import zipfile
-from config import *
-import papermill
+
+import config
 
 
+class ReturnURLS:
+    """Get and clean the urls listed in urls.txt"""
 
-class my_processor():
+    def get_urls(self):
+        urls_path = pathlib.Path.cwd() / "processor/inputs/urls.txt"
+        with open(urls_path, mode="r") as f:
+            urls = [line.strip() for line in f if not line.startswith("#")]
 
-    EXIT_PASS, EXIT_FAIL = 0, 1
+        for url in urls:
+            cleaned_urls = []
+            try:
+                response = requests.get(url)
+                cleaned_urls.append(url)
+            except requests.ConnectionError:
+                pass
+            except requests.exceptions.MissingSchema:
+                pass
 
-    def __init__(self, mode='normal', url=None):
-        # Validate and process argument options
-        self.parse_args(mode, url)
-        # Initialize database connection
-        if mode == 'normal':
-            self.request_html()
-            self.parse_html()
-            self.wget_url()
-            self.files_handler()
-    
-    def parse_args(self, mode, url):
-        if mode == 'unittest':
-            if url is None:
-                print('Missing url')
-                sys.app_exit('fail')
-            self.url = url
-        else:
-            parser = argparse.ArgumentParser(description='UCI dataset processor')
-            parser.add_argument('-url', '--url', help='Url of dataset', required=True)
-            parser.add_argument('-path', '--path', help='Path to Save Files', required=False)
+        return cleaned_urls
 
-            args = parser.parse_args()
 
-            self.url = args.url
-            self.path = args.path
-        
-    def app_exit(self, status):
-        if status.lower() == 'pass':
-            print('** App Exit Status: PASS \n')
-            exit(self.EXIT_PASS)
-        elif status.lower() == 'skip':
-            print('** App Exit Status: SKIP \n')
-            exit(self.EXIT_PASS)
-        else:
-            print('** App Exit Status: FAIL \n')
-            exit(self.EXIT_FAIL)
+class DatasetTitle:
+    """Get the dataset name from the url"""
 
-    def request_html(self):
-        r = requests.get(self.url)
-        self.html = r.content.decode('utf-8') # this converts bytes into sring
-        return self.html # return statement needed for unittest
+    def get_dataset_titles(self):
+        urls = ReturnURLS().get_urls()
+        names = []
+        pattern = "([^/]*$)"
+        for url in urls:
+            if url[-1] == "/":
+                url = url[:-1]
+            dataset_name = re.search(pattern, url)
+            dataset_parent_directory = (
+                str(pathlib.Path.cwd()) + "/data/" + dataset_name[0]
+            )
+            jupyter_notebook_filename = dataset_name[0] + ".ipynb"
+            jupyter_notebook_parent_directory = str(pathlib.Path.cwd() / "outputs/")
+            names.append(
+                (
+                    dataset_name[0],
+                    jupyter_notebook_filename,
+                    dataset_parent_directory,
+                    jupyter_notebook_parent_directory,
+                )
+            )
+        return names
 
-    def parse_html(self):
-        # parse html return a [] of links
-        soup = BeautifulSoup(self.html, 'html.parser')
-        self.urls = []
-        for link in soup.find_all('a'):
-            if '.' in link.get('href'):
-                self.urls.append(self.url + link.get('href'))
-        return self.urls
 
-    def wget_url(self):
-        a = 'wget'
-        p = '-P'
-        for url in self.urls:
-            subprocess.run([a, p, save_data_path, url])
-        return 'WGET operation successful'
+class ReturnDownloadLinks:
+    """Get the download links for each url returned by ReturnURLS"""
 
-    def files_handler(self):
-        pattern = '([^/]*$)'
-        handled_files = []
-        for url in self.urls:
-            file_name = re.search(pattern, url)
-            if 'zip' in file_name[0]:
-                with zipfile.ZipFile(save_data_path + '/' + file_name[0], 'r') as zip_ref:
-                    zip_ref.extractall(save_data_path)
-            handled_files.append(file_name[0])
-        return handled_files
-    
+    def get_links(self):
+
+        download_links = []
+        urls = ReturnURLS().get_urls()
+        for l in urls:
+            r = requests.get(l)
+            html = r.content.decode("utf-8")
+            soup = BeautifulSoup(html, "html.parser")
+            links = [link for link in soup.find_all("a") if "." in link.get("href")]
+            links = [link.get("href") for link in links]
+            for link in links:
+                download_links.append(l + link)
+        return download_links
+
+
+class DownloadDataset:
+    """Fetch all datafiles for each dataset"""
+
+    def __init__(self) -> None:
+        self.datasets = DatasetTitle().get_dataset_titles()
+        self.urls = ReturnDownloadLinks().get_links()
+
+    def get_data(self):
+        for dataset in self.datasets:
+            dir_name = dataset[2]
+            file_name = dataset[0]
+            for url in self.urls:
+                file = self.extract_download_filename(url)
+                a = "wget"
+                p = "-P"
+                # download only if file doesn't already exist
+                if os.path.isfile(dir_name + "/" + file):
+                    print(f"Dataset file {file} has previously been downloaded")
+                    continue
+                subprocess.run([a, p, dir_name, url])
+                print(f"Dataset file {file} successfully downloaded")
+
+    def extract_download_filename(self, url: str):
+        pattern = "([^/]*$)"
+        return re.search(pattern, url)[1]
+
+    def return_filenames(self):
+        dataset_filenames = []
+        for dataset in self.datasets:
+            file_names = []
+            for url in self.urls:
+                filename = self.extract_download_filename(url)
+                file_names.append(filename)
+            dataset_filenames.append((dataset[0], file_names))
+        return dataset_filenames
+
+
+class ExecutePapermill:
+    """Execute the papermill .ipnby template and save for each url"""
+
+    def __init__(self, filenames: list) -> None:
+        self.filenames = filenames  # this is a list of tuples(dataset, [filenames])
+
     def execute_papermill(self):
-        # first build the execute string
-        
-        pass
+
+        for dataset in self.filenames:
+            pm.execute_notebook(
+                "/home/randall/Dev/uci_dataset_processor/processor/inputs/uci_template.ipynb",
+                "/home/randall/Dev/uci_dataset_processor/processor/outputs/"
+                + dataset[0]
+                + ".ipynb",
+                parameters={"inputs": dataset[1]},
+            )
 
 
-if __name__=='__main__':
-    app = my_processor()
+def main():
+    datasets_processor = DownloadDataset()
+    datasets_processor.get_data()
+    papermill = ExecutePapermill(datasets_processor.return_filenames())
+    papermill.execute_papermill()
+
+
+if __name__ == "__main__":
+    main()
